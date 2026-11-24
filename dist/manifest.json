@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "Page Crawler & Summarizer",
+  "version": "0.1.0",
+  "description": "Parse a page, crawl its links, preview each link's topics, save to a local DB, export Markdown, and summarize with Claude.",
+  "action": { "default_title": "Crawl links on this page" },
+  "background": { "service_worker": "background.js", "type": "module" },
+  "options_page": "options.html",
+  "permissions": ["activeTab", "scripting", "storage", "unlimitedStorage", "downloads"],
+  "host_permissions": ["<all_urls>"]
+}

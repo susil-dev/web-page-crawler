@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Page Crawler</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <h1>Page Crawler</h1>
+      <nav>
+        <button class="tab active" data-tab="crawl">Crawl</button>
+        <button class="tab" data-tab="library">Library</button>
+      </nav>
+      <button id="open-settings" class="link-btn">Settings</button>
+      <div id="top-progress" class="topbar" hidden aria-hidden="true"><div class="fill"></div></div>
+    </header>
+
+    <main>
+      <section id="crawl-view">
+        <form id="source-form" class="toolbar">
+          <input id="source-url" type="url" placeholder="https://example.com/some-page" required />
+          <button type="submit" class="primary">Load links</button>
+        </form>
+        <div id="activity" class="activity" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="activity-label" hidden>
+          <div class="activity-text">
+            <span class="spinner"></span>
+            <span id="activity-label"></span>
+            <span class="spacer"></span>
+            <span id="activity-count" class="muted"></span>
+          </div>
+          <div class="bar"><div class="fill"></div></div>
+        </div>
+        <div id="source-info"></div>
+
+        <div id="tree-panel" hidden>
+          <div class="toolbar sticky">
+            <input id="link-filter" type="search" placeholder="Filter by title, link text or URL…" />
+            <label class="check"><input type="checkbox" id="same-domain" /> Same domain only</label>
+            <label class="check" title="Link hops from the starting page. 1 = only the links on this page; 2 = also the links on those pages; and so on.">
+              Crawl depth <input id="depth" type="number" min="1" max="5" />
+            </label>
+            <button id="select-all">Select all</button>
+            <button id="select-none">Select none</button>
+            <button id="expand-all">Expand all</button>
+            <button id="collapse-all">Collapse all</button>
+            <span class="spacer"></span>
+            <button id="stop-btn" hidden>Stop</button>
+            <button id="crawl-btn" class="primary">Crawl selected</button>
+          </div>
+          <div class="toolbar">
+            <strong id="progress"></strong>
+            <span id="selected-count" class="muted"></span>
+            <span id="results-note" class="muted"></span>
+            <span class="spacer"></span>
+            <button id="save-sel">Save selected</button>
+            <button id="download-sel">Download selected .md</button>
+            <button id="summarize-sel">Summarize selected</button>
+          </div>
+          <ul id="tree" class="tree"></ul>
+        </div>
+      </section>
+
+      <section id="library-view" hidden>
+        <div class="toolbar">
+          <input id="lib-search" type="search" placeholder="Search saved pages, topics and summaries…" />
+          <span class="spacer"></span>
+          <button id="export-md">Export all .md</button>
+          <button id="export-json">Export JSON</button>
+          <button id="export-json-images" title="Includes each stored image file as a base64 data: URL">Export JSON + image files</button>
+        </div>
+        <div id="library-list"></div>
+      </section>
+    </main>
+
+    <dialog id="viewer">
+      <form method="dialog"><button class="close">Close</button></form>
+      <h2 id="viewer-title"></h2>
+      <a id="viewer-url" target="_blank"></a>
+      <pre id="viewer-body"></pre>
+    </dialog>
+
+    <script type="module" src="dashboard.js"></script>
+  </body>
+</html>

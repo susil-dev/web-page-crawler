@@ -1,0 +1,1 @@
+chrome.action.onClicked.addListener(async e=>{let r=new URLSearchParams;e.id!==void 0&&r.set("tabId",String(e.id)),e.url&&r.set("url",e.url),await chrome.tabs.create({url:chrome.runtime.getURL(`dashboard.html?${r}`),index:(e.index??0)+1})});
