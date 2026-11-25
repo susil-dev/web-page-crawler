@@ -9,7 +9,7 @@ mkdirSync("dist", { recursive: true });
 cpSync("static", "dist", { recursive: true });
 
 const options = {
-  entryPoints: ["src/background.ts", "src/dashboard.ts", "src/options.ts"],
+  entryPoints: ["src/background.ts", "src/dashboard.ts", "src/options.ts", "src/sidepanel.ts"],
   outdir: "dist",
   bundle: true,
   format: "esm",

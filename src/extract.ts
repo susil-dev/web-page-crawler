@@ -1,6 +1,7 @@
 import { Readability } from "@mozilla/readability";
 import TurndownService from "turndown";
 import type { TitleSource } from "./settings";
+import { findFiles, findLists, findMeta, findNextPage, findTables, type DataTable, type FileLink } from "./resources";
 
 export interface LinkInfo {
   url: string;
@@ -37,6 +38,18 @@ export interface ParsedPage {
   wordCount: number;
   links: LinkInfo[];
   images: ImageInfo[];
+  /** Data tables (<table>) with a header and rows. */
+  tables: DataTable[];
+  /** Repeating items (cards, results, entries) turned into rows and columns. */
+  lists: DataTable[];
+  /** Links to documents and media files (PDF, Office, CSV, ZIP, …). */
+  files: FileLink[];
+  /** Structured fields: meta tags, schema.org JSON-LD, microdata. See resources.ts findMeta. */
+  meta: Record<string, string>;
+  /** The next page of a paginated list or article, when the page links to one. */
+  nextUrl?: string;
+  /** The page's HTML without scripts and styles, kept in memory (not saved) for custom fields. */
+  html: string;
 }
 
 const MAX_IMAGES = 60;
@@ -64,6 +77,8 @@ export function parseHtml(html: string, url: string, titleSource: TitleSource = 
   const heading = clean(doc.querySelector("h1")?.textContent);
   const ogTitle = meta(doc, 'meta[property="og:title"]');
   const description = meta(doc, 'meta[name="description"]') || meta(doc, 'meta[property="og:description"]');
+  const structured = findMeta(doc, url); // before scripts are removed: JSON-LD lives in <script> tags
+  const nextUrl = findNextPage(doc, url);
 
   // Readability mutates the document, so give it a copy.
   const parsed = new Readability(doc.cloneNode(true) as Document).parse();
@@ -90,6 +105,11 @@ export function parseHtml(html: string, url: string, titleSource: TitleSource = 
   const canonicalHref = doc.querySelector('link[rel~="canonical"]')?.getAttribute("href");
   const canonical = canonicalHref ? resolve(canonicalHref, url) : undefined;
 
+  const tables = findTables(doc);
+  const lists = findLists(doc, url);
+  doc.querySelectorAll("script, style, noscript, template, svg, link[rel=stylesheet]").forEach((e) => e.remove());
+  const cleanedHtml = doc.documentElement.outerHTML;
+
   return {
     url,
     canonical: canonical ? stripHash(canonical) : "",
@@ -104,6 +124,12 @@ export function parseHtml(html: string, url: string, titleSource: TitleSource = 
     wordCount: wordCount(text),
     links,
     images,
+    tables,
+    lists,
+    files: findFiles(links),
+    meta: structured,
+    nextUrl,
+    html: cleanedHtml,
   };
 }
 

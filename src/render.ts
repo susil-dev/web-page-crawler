@@ -8,6 +8,13 @@ export interface Captured {
   url: string;
 }
 
+/** Infinite scroll: how many times to scroll to the bottom, and whether to press "Load more" buttons. */
+export interface ScrollOptions {
+  scrolls: number;
+  clickMore: boolean;
+}
+const NO_SCROLL: ScrollOptions = { scrolls: 0, clickMore: false };
+
 const MAX_TABS = 2; // background tabs open at once
 let open = 0;
 const waiting: (() => void)[] = [];
@@ -24,13 +31,13 @@ async function slot<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 /** Open `url` in an inactive tab, wait for it to load and settle, capture it, close the tab. */
-export function renderInTab(url: string, timeoutMs = 45_000): Promise<Captured> {
+export function renderInTab(url: string, scroll = NO_SCROLL, timeoutMs = 45_000): Promise<Captured> {
   return slot(async () => {
     const tab = await chrome.tabs.create({ url, active: false });
     const tabId = tab.id!;
     try {
       await waitForLoad(tabId, timeoutMs);
-      return await captureTab(tabId, 15_000);
+      return await captureTab(tabId, 15_000, scroll);
     } finally {
       chrome.tabs.remove(tabId).catch(() => {});
     }
@@ -38,8 +45,12 @@ export function renderInTab(url: string, timeoutMs = 45_000): Promise<Captured> 
 }
 
 /** Capture an already-open tab, letting it settle for up to `settleMs` first. */
-export async function captureTab(tabId: number, settleMs: number): Promise<Captured> {
-  const [res] = await chrome.scripting.executeScript({ target: { tabId }, func: capturePage, args: [settleMs] });
+export async function captureTab(tabId: number, settleMs: number, scroll = NO_SCROLL): Promise<Captured> {
+  const [res] = await chrome.scripting.executeScript({
+    target: { tabId },
+    func: capturePage,
+    args: [settleMs, scroll.scrolls, scroll.clickMore],
+  });
   const result = res?.result as Captured | undefined;
   if (!result?.html) throw new Error("Couldn't read the rendered page.");
   return result;
@@ -69,10 +80,11 @@ function waitForLoad(tabId: number, timeoutMs: number): Promise<void> {
 
 /**
  * Runs inside the page (injected by executeScript), so it must be self-contained.
- * Waits until the visible text stops changing (content loaded by JavaScript), then returns the
- * HTML, with open shadow DOM and same-origin iframes flattened in so their text isn't lost.
+ * Waits until the visible text stops changing (content loaded by JavaScript), optionally scrolls to
+ * the bottom (and presses "Load more") to load more items, then returns the HTML, with open shadow
+ * DOM and same-origin iframes flattened in so their text isn't lost.
  */
-async function capturePage(settleMs: number): Promise<{ html: string; url: string }> {
+async function capturePage(settleMs: number, scrolls: number, clickMore: boolean): Promise<{ html: string; url: string }> {
   const textLength = () => document.body?.innerText.length ?? 0;
   const start = Date.now();
   let last = -1;
@@ -87,6 +99,29 @@ async function capturePage(settleMs: number): Promise<{ html: string; url: strin
       break;
     }
   }
+
+  // Infinite scroll: scroll to the bottom until nothing new arrives (or `scrolls` times).
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  const MORE = /^(load|show|see|view)\s+more\b/i;
+  for (let i = 0; i < scrolls; i++) {
+    const before = textLength();
+    window.scrollTo(0, document.documentElement.scrollHeight);
+    if (clickMore) {
+      // Only buttons, or links that don't navigate away.
+      const more = [...document.querySelectorAll<HTMLElement>("button, [role=button], a")].find((el) => {
+        if (!MORE.test((el.textContent ?? "").trim()) || el.offsetParent === null) return false;
+        if ((el as HTMLButtonElement).disabled) return false;
+        const href = el.getAttribute("href");
+        return el.localName !== "a" || !href || href === "#" || href.startsWith("javascript:");
+      });
+      more?.click();
+    }
+    const t0 = Date.now();
+    while (Date.now() - t0 < 3000 && textLength() === before) await sleep(300);
+    if (textLength() === before) break;
+    await sleep(500);
+  }
+  if (scrolls) window.scrollTo(0, 0);
 
   const hasShadowOrFrames = [...document.querySelectorAll("*")].some(
     (el) => el.shadowRoot || el.localName === "iframe",

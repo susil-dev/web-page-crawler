@@ -5,6 +5,15 @@
 //   images  one record per image URL (the file itself as a Blob), only when "Keep image files" is on
 
 import type { ImageInfo } from "./extract";
+import type { DataTable, FileLink } from "./resources";
+
+export interface Picked {
+  images: string[];
+  files: string[];
+  /** Indexes into `tables` and `lists`. */
+  tables: number[];
+  lists: number[];
+}
 
 export interface PageRecord {
   url: string;
@@ -25,6 +34,19 @@ export interface PageRecord {
   /** Other addresses found during the crawl that turned out to be this same page. */
   aliases?: string[];
   images?: ImageInfo[];
+  /** Detected data tables and repeating lists, as rows and columns. */
+  tables?: DataTable[];
+  lists?: DataTable[];
+  /** Links to documents and media files found on the page. */
+  files?: FileLink[];
+  /** Structured fields: meta tags, schema.org JSON-LD, microdata. */
+  meta?: Record<string, string>;
+  /**
+   * What was picked on the page when it was saved (the resource tags in the crawl tree, or single items
+   * on the Data / Media tabs). Picked image and file contents are stored in the `images` store, and
+   * downloads and exports of the page include them.
+   */
+  picked?: Picked;
   crawledAt: string;
   savedAt: string;
   summary?: string;

@@ -1,8 +1,9 @@
 {
   "name": "page-crawler-extension",
-  "version": "0.1.0",
+  "version": "0.3.1",
   "private": true,
-  "description": "Chrome extension: parse a page, crawl its links, preview topics, save to IndexedDB, export Markdown, summarize with Claude.",
+  "description": "Chrome extension: grab tables and lists from the page you're on or crawl a site; export Excel, CSV, Markdown, JSON or Notion; local library; Claude summaries.",
+  "license": "GPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "build": "node build.mjs",

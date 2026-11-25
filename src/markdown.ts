@@ -1,12 +1,16 @@
 import type { PageRecord } from "./db";
-import { extensionFor, imageBlob } from "./images";
+import { extensionFor, fileBlob, imageBlob } from "./images";
+import type { DataTable } from "./resources";
 
 /**
  * Render a saved page as a standalone Markdown file with YAML front matter.
  * `localImages` maps image URLs to relative file paths, for downloads that include the image files.
  */
 export function toMarkdown(rec: PageRecord, localImages = new Map<string, string>()): string {
-  const images = rec.images ?? [];
+  const picked = rec.picked;
+  // When images were picked, the page lists those; otherwise every image found.
+  const images = picked?.images.length ? (rec.images ?? []).filter((i) => picked.images.includes(i.src)) : (rec.images ?? []);
+  const pickedFiles = (rec.files ?? []).filter((f) => picked?.files.includes(f.url));
   const fm = [
     "---",
     `title: ${yaml(rec.title)}`,
@@ -24,6 +28,9 @@ export function toMarkdown(rec: PageRecord, localImages = new Map<string, string
     rec.summaryModel ? `summary_model: ${rec.summaryModel}` : null,
     `words: ${rec.wordCount}`,
     images.length ? `images: ${images.length}` : null,
+    picked?.images.length ? `picked_images: ${picked.images.length}` : null,
+    pickedFiles.length ? `picked_files: ${pickedFiles.length}` : null,
+    rec.tables?.length ? `tables: ${rec.tables.length}` : null,
     "---",
   ].filter(Boolean);
 
@@ -45,10 +52,33 @@ export function toMarkdown(rec: PageRecord, localImages = new Map<string, string
       ].filter(Boolean);
       return `- ![${mdText(i.alt)}](${local(i.src)})${i.alt ? ` **${mdText(i.alt)}**` : ""}${details.length ? ` — ${details.join(" · ")}` : ""}`;
     });
-    parts.push(`## Images\n\n${rows.join("\n")}`);
+    parts.push(`## ${picked?.images.length ? "Picked images" : "Images"}\n\n${rows.join("\n")}`);
+  }
+  if (pickedFiles.length) {
+    const rows = pickedFiles.map((f) => {
+      const name = f.text || decodeURI(f.url.split("/").pop() || f.url);
+      const path = localImages.get(f.url);
+      return `- [${mdText(name)}](${path ?? f.url}) (${f.ext.toUpperCase()})${path ? ` — original: <${f.url}>` : ""}`;
+    });
+    parts.push(`## Picked files\n\n${rows.join("\n")}`);
   }
   parts.push(`## Content\n\n${content}`);
+  // Turndown flattens <table>s into plain text, so add the detected tables back as Markdown tables.
+  if (rec.tables?.length) parts.push(`## Tables\n\n${rec.tables.map(mdTable).join("\n\n")}`);
   return parts.join("\n\n") + "\n";
+}
+
+function mdTable(t: DataTable): string {
+  const cell = (v: string) => (v ?? "").replace(/\|/g, "\\|").replace(/\s+/g, " ");
+  const rows = t.rows.slice(0, 500);
+  return [
+    `### ${t.title}`,
+    "",
+    `| ${t.columns.map((c) => cell(c.name)).join(" | ")} |`,
+    `| ${t.columns.map(() => "---").join(" | ")} |`,
+    ...rows.map((r) => `| ${t.columns.map((_, i) => cell(r[i])).join(" | ")} |`),
+    ...(t.rows.length > rows.length ? ["", `_First ${rows.length} of ${t.rows.length} rows._`] : []),
+  ].join("\n");
 }
 
 function yaml(s: string): string {
@@ -78,20 +108,46 @@ export function fileName(rec: { url: string; title: string }): string {
  * Download a page as .md. With images on, its image files go in a "<name>_files" folder beside it
  * (from the DB, or fetched now if not stored) and the Markdown points at those local copies.
  */
-export async function downloadPage(rec: PageRecord, withImages: boolean, maxBytes: number): Promise<void> {
+export async function downloadPage(
+  rec: PageRecord,
+  withImages: boolean,
+  maxBytes: number,
+  /** Called before each image; throw from it to stop. */
+  onImage?: (done: number, total: number) => void,
+): Promise<void> {
   const mdPath = fileName(rec);
   const local = new Map<string, string>();
-  if (withImages) {
-    const folder = `${slug(rec.title)}_files`;
-    const dir = mdPath.replace(/[^/]+$/, folder);
-    let n = 0;
-    for (const img of rec.images ?? []) {
-      const file = await imageBlob(img.src, maxBytes);
-      if (!file) continue;
-      const name = `${String(++n).padStart(2, "0")}.${extensionFor(file.type, img.src)}`;
-      await downloadBlob(`${dir}/${name}`, file.blob, "overwrite");
-      local.set(img.src, `${folder}/${name}`);
+  const folder = `${slug(rec.title)}_files`;
+  const dir = mdPath.replace(/[^/]+$/, folder);
+  // Picked images are always written; the rest only with "Keep image files" on.
+  const pickedImgs = rec.picked?.images ?? [];
+  const images = (rec.images ?? []).filter((i) => pickedImgs.includes(i.src) || (withImages && !pickedImgs.length));
+  const files = (rec.files ?? []).filter((f) => rec.picked?.files.includes(f.url));
+  const total = images.length + files.length;
+  let n = 0;
+  for (const img of images) {
+    onImage?.(n, total);
+    const file = await imageBlob(img.src, maxBytes);
+    if (!file) continue;
+    const name = `${String(++n).padStart(2, "0")}.${extensionFor(file.type, img.src)}`;
+    await downloadBlob(`${dir}/${name}`, file.blob, "overwrite");
+    local.set(img.src, `${folder}/${name}`);
+  }
+  for (const f of files) {
+    onImage?.(n, total);
+    const file = await fileBlob(f.url);
+    if (!file) continue;
+    n++;
+    const raw = new URL(f.url).pathname.split("/").pop() || "";
+    let decoded = raw;
+    try {
+      decoded = decodeURIComponent(raw);
+    } catch {
+      /* keep it encoded */
     }
+    const base = (decoded || `file.${f.ext}`).replace(/[<>:"/\\|?*\u0000-\u001f]/g, "_");
+    await downloadBlob(`${dir}/${base}`, file.blob, "overwrite");
+    local.set(f.url, `${folder}/${base}`);
   }
   await downloadText(mdPath, toMarkdown(rec, local));
 }

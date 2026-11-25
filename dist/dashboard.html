@@ -6,73 +6,173 @@
     <title>Page Crawler</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
-  <body>
+  <body class="app">
     <header class="top">
-      <h1>Page Crawler</h1>
-      <nav>
+      <div class="brand">
+        <svg class="logo" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="12" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M9 6h3a3 3 0 0 1 3 3M9 18h3a3 3 0 0 0 3-3"></path></svg>
+        Page Crawler
+      </div>
+      <nav class="tabs" aria-label="Sections">
         <button class="tab active" data-tab="crawl">Crawl</button>
         <button class="tab" data-tab="library">Library</button>
+        <button class="tab" data-tab="settings">Settings</button>
       </nav>
-      <button id="open-settings" class="link-btn">Settings</button>
+      <form id="source-form" class="source-form">
+        <label for="source-url" class="sr-only">Start page address</label>
+        <input id="source-url" type="url" placeholder="https://example.com/some-page" required />
+        <button type="submit">Load links</button>
+      </form>
       <div id="top-progress" class="topbar" hidden aria-hidden="true"><div class="fill"></div></div>
     </header>
 
-    <main>
-      <section id="crawl-view">
-        <form id="source-form" class="toolbar">
-          <input id="source-url" type="url" placeholder="https://example.com/some-page" required />
-          <button type="submit" class="primary">Load links</button>
-        </form>
+    <section id="crawl-view" class="view">
+      <div class="scopebar" id="scopebar" hidden>
+        <span class="eyebrow">Scope</span>
+        <label class="pill" title="Link hops from the starting page. 1 = only the links on this page; 2 = also the links on those pages; and so on.">
+          Depth <input id="depth" type="number" min="1" max="5" />
+        </label>
+        <label class="pill" title="Pages loaded at the same time (1–10). Pages that need a browser tab are limited to 2 at once. Lower is gentler on the site.">
+          Parallel <input id="parallel" type="number" min="1" max="10" />
+        </label>
+        <label class="pill check"><input type="checkbox" id="same-domain" /> Same domain</label>
+        <label class="pill check" title="Add each crawled page's “Next page” link at the same depth, so lists spread over several pages are crawled whole (limit in Settings)">
+          <input type="checkbox" id="follow-next" /> Follow next pages
+        </label>
+        <button class="pill" id="scroll-pill" title="Infinite scroll for pages read in a browser tab: change in Settings">Infinite scroll · off</button>
+        <span class="spacer"></span>
+        <span id="progress" class="muted small-text"></span>
         <div id="activity" class="activity" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-labelledby="activity-label" hidden>
           <div class="activity-text">
             <span class="spinner"></span>
             <span id="activity-label"></span>
-            <span class="spacer"></span>
             <span id="activity-count" class="muted"></span>
           </div>
           <div class="bar"><div class="fill"></div></div>
         </div>
-        <div id="source-info"></div>
+        <button id="stop-btn" hidden>Stop</button>
+        <button id="crawl-btn" class="primary">Crawl selected</button>
+      </div>
 
-        <div id="tree-panel" hidden>
-          <div class="toolbar sticky">
+      <div id="source-info"></div>
+
+      <div id="workbench" class="workbench" hidden>
+        <aside class="pane tree-pane" aria-label="Pages">
+          <div class="pane-head">
+            <label for="link-filter" class="sr-only">Filter pages</label>
             <input id="link-filter" type="search" placeholder="Filter by title, link text or URL…" />
-            <label class="check"><input type="checkbox" id="same-domain" /> Same domain only</label>
-            <label class="check" title="Link hops from the starting page. 1 = only the links on this page; 2 = also the links on those pages; and so on.">
-              Crawl depth <input id="depth" type="number" min="1" max="5" />
-            </label>
-            <button id="select-all">Select all</button>
-            <button id="select-none">Select none</button>
-            <button id="expand-all">Expand all</button>
-            <button id="collapse-all">Collapse all</button>
-            <span class="spacer"></span>
-            <button id="stop-btn" hidden>Stop</button>
-            <button id="crawl-btn" class="primary">Crawl selected</button>
-          </div>
-          <div class="toolbar">
-            <strong id="progress"></strong>
-            <span id="selected-count" class="muted"></span>
-            <span id="results-note" class="muted"></span>
-            <span class="spacer"></span>
-            <button id="save-sel">Save selected</button>
-            <button id="download-sel">Download selected .md</button>
-            <button id="summarize-sel">Summarize selected</button>
+            <div class="chips" id="quick-filters" role="group" aria-label="Show"></div>
+            <div class="tree-tools">
+              <span id="selected-count" class="muted small-text"></span>
+              <span class="spacer"></span>
+              <button class="small" id="select-all" title="Tick every page shown">All</button>
+              <button class="small" id="select-none" title="Untick every page shown">None</button>
+              <button class="small" id="expand-all" title="Expand all">Expand</button>
+              <button class="small" id="collapse-all" title="Collapse all">Collapse</button>
+            </div>
           </div>
           <ul id="tree" class="tree"></ul>
-        </div>
-      </section>
+        </aside>
 
-      <section id="library-view" hidden>
-        <div class="toolbar">
-          <input id="lib-search" type="search" placeholder="Search saved pages, topics and summaries…" />
-          <span class="spacer"></span>
-          <button id="export-md">Export all .md</button>
-          <button id="export-json">Export JSON</button>
-          <button id="export-json-images" title="Includes each stored image file as a base64 data: URL">Export JSON + image files</button>
+        <section class="pane focus-pane" id="focus" aria-live="polite"></section>
+
+        <aside class="pane basket-pane" aria-label="Export">
+          <section class="basket-section">
+            <h2 class="eyebrow">Export basket</h2>
+            <div id="basket-list" class="basket-list"></div>
+            <div class="basket-add">
+              <span class="muted small-text">Add from ticked pages:</span>
+              <button class="small" data-action="res-pick" data-kind="table">Tables</button>
+              <button class="small" data-action="res-pick" data-kind="list">Lists</button>
+              <button class="small" data-action="res-pick" data-kind="image">Images</button>
+              <button class="small" data-action="res-pick" data-kind="file">Files</button>
+            </div>
+            <div class="row-between">
+              <label class="check small-text" title="Tables or lists with the same layout (for example one per page of results) go into one sheet, with a Page URL column">
+                <input type="checkbox" id="merge-similar" /> Merge same-layout tables
+              </label>
+              <button class="link-btn small-text" id="res-clear">Clear</button>
+            </div>
+          </section>
+          <section class="basket-section">
+            <h2 class="eyebrow">Send tables to</h2>
+            <div class="dest-list" role="radiogroup" aria-label="Destination">
+              <label class="dest"><input type="radio" name="dest" value="xlsx" checked /> <span><strong>Excel</strong><small>One sheet per table</small></span></label>
+              <label class="dest"><input type="radio" name="dest" value="csv" /> <span><strong>CSV</strong><small>One file per table</small></span></label>
+              <label class="dest"><input type="radio" name="dest" value="notion" /> <span><strong>Notion</strong><small id="notion-state">Each table becomes a database</small></span></label>
+            </div>
+            <button id="res-export" class="primary wide-btn">Export</button>
+            <button id="res-download" class="wide-btn">Download images &amp; files</button>
+          </section>
+          <section class="basket-section">
+            <h2 class="eyebrow">Ticked pages <span id="ticked-count" class="muted"></span></h2>
+            <div class="stack">
+              <button id="save-sel">Save to library</button>
+              <button id="download-sel">Download as .md</button>
+              <button id="summarize-sel">Summarize with Claude</button>
+              <button id="notion-sel" title="Create a Notion page for each ticked, crawled page: content, summary and tables">Send pages to Notion</button>
+              <button id="fields-btn" title="Build a table with one row per ticked page: pick fields such as title, price or author">Page table…</button>
+            </div>
+          </section>
+          <p id="results-note" class="muted small-text"></p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="library-view" class="view library" hidden>
+      <aside class="pane lib-side" aria-label="Library filters">
+        <section>
+          <h2 class="eyebrow">Sites</h2>
+          <div id="lib-sites" class="lib-sites"></div>
+        </section>
+        <section>
+          <h2 class="eyebrow">Contains</h2>
+          <label class="check"><input type="checkbox" class="lib-has" value="tables" /> Tables</label>
+          <label class="check"><input type="checkbox" class="lib-has" value="lists" /> Lists</label>
+          <label class="check"><input type="checkbox" class="lib-has" value="images" /> Images</label>
+          <label class="check"><input type="checkbox" class="lib-has" value="summary" /> AI summary</label>
+        </section>
+        <section>
+          <h2 class="eyebrow">Whole library</h2>
+          <div class="stack">
+            <button id="export-md">Export all .md</button>
+            <button id="export-json">Export JSON</button>
+            <button id="export-json-images" title="Includes each stored image file, and picked files, as base64 data: URLs">Export JSON + files</button>
+          </div>
+        </section>
+      </aside>
+      <section class="lib-main">
+        <div class="lib-toolbar">
+          <label for="lib-search" class="sr-only">Search the library</label>
+          <input id="lib-search" type="search" placeholder="Search saved pages, topics, summaries and table cells…" />
+          <div class="seg" role="group" aria-label="Library view">
+            <button data-libview="cards" aria-pressed="true" class="on">Cards</button>
+            <button data-libview="list" aria-pressed="false">List</button>
+          </div>
+          <label class="check small-text" id="lib-group-wrap" hidden>Group by
+            <select id="lib-group">
+              <option value="site">Site › crawl › pages</option>
+              <option value="category">Category</option>
+            </select>
+          </label>
         </div>
-        <div id="library-list"></div>
+        <div class="lib-toolbar">
+          <strong id="lib-count"></strong>
+          <span id="lib-sel-count" class="muted"></span>
+          <button class="link-btn small-text" id="lib-select-all">Select all shown</button>
+          <button class="link-btn small-text" id="lib-select-none">Clear selection</button>
+          <span class="spacer"></span>
+          <button id="lib-md-sel">Markdown</button>
+          <button id="lib-notion-sel">Send to Notion</button>
+          <button id="lib-delete-sel" class="danger">Delete</button>
+          <button id="lib-xlsx-sel" class="primary">Tables → Excel</button>
+        </div>
+        <div id="library-list" class="lib-grid"></div>
       </section>
-    </main>
+    </section>
+
+    <section id="settings-view" class="view settings-view" hidden>
+      <div class="settings-wrap" id="settings-root"></div>
+    </section>
 
     <dialog id="viewer">
       <form method="dialog"><button class="close">Close</button></form>

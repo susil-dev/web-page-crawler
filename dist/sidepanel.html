@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Page Crawler</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="sp">
+    <header class="sp-head">
+      <svg class="logo" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="6" cy="6" r="3"></circle><circle cx="18" cy="12" r="3"></circle><circle cx="6" cy="18" r="3"></circle><path d="M9 6h3a3 3 0 0 1 3 3M9 18h3a3 3 0 0 0 3-3"></path></svg>
+      <strong class="sp-name">Page Crawler</strong>
+      <button class="icon-btn" data-action="open-full" title="Open the full view in a new tab: crawl the site, all controls and details" aria-label="Open the full view">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6v6M20 4l-8 8M10 6H5a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5"></path></svg>
+      </button>
+    </header>
+    <nav class="sp-tabs tabs" aria-label="Sections">
+      <button class="tab active" data-tab="crawl" aria-current="page">Crawl</button>
+      <button class="tab" data-tab="library">Library</button>
+      <button class="tab" data-tab="settings">Settings</button>
+    </nav>
+    <div id="sp-busy" class="sp-busy" role="status" hidden>
+      <span class="spinner"></span>
+      <span id="sp-busy-label" class="grow ellipsis"></span>
+      <button id="sp-stop" class="small danger" title="Stop: cancels downloads still in progress; what's done stays">Stop</button>
+    </div>
+    <main id="sp-body" class="sp-body" aria-live="polite"></main>
+    <main id="sp-lib" class="sp-body" hidden>
+      <div class="sp-lib-tools">
+        <label for="sp-lib-q" class="sr-only">Search the library</label>
+        <input id="sp-lib-q" type="search" placeholder="Search saved pages…" />
+        <button class="small" data-action="open-library" title="Open the library in the full view: cards, list by site or category, bulk export">Full library</button>
+      </div>
+      <div id="sp-lib-list"></div>
+    </main>
+    <main id="sp-settings" class="sp-body sp-settings" hidden></main>
+    <footer id="sp-foot" class="sp-foot" hidden>
+      <div class="sp-export">
+        <button class="primary" data-action="xlsx">Export Excel</button>
+        <button data-action="csv">CSV</button>
+        <button data-action="notion" title="Create a Notion database from this table">Notion</button>
+        <details class="menu">
+          <summary class="icon-btn" aria-label="More actions" title="More actions">⋯</summary>
+          <div class="menu-list">
+            <button data-action="copy">Copy table (paste into a sheet)</button>
+            <button data-action="save">Save page to library</button>
+            <button data-action="md">Download page as .md</button>
+          </div>
+        </details>
+      </div>
+      <span id="sp-status" class="muted small-text"></span>
+    </footer>
+    <script type="module" src="sidepanel.js"></script>
+  </body>
+</html>

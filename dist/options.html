@@ -2,57 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Page Crawler Settings</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <main class="narrow">
-      <h1>Settings</h1>
-      <form id="form" class="settings">
-        <label>
-          Anthropic API key
-          <input id="apiKey" type="password" autocomplete="off" placeholder="sk-ant-…" />
-          <small>Stored only in this browser's extension storage; sent only to api.anthropic.com. Get one at console.anthropic.com.</small>
-        </label>
-        <label>
-          Summary model
-          <select id="model"></select>
-        </label>
-        <label>
-          Max pages per crawl
-          <input id="maxPages" type="number" min="1" max="500" />
-        </label>
-        <label>
-          Pages fetched in parallel
-          <input id="concurrency" type="number" min="1" max="10" />
-          <small>Keep this low to be polite to the sites you crawl.</small>
-        </label>
-        <label class="check"><input id="sameDomainOnly" type="checkbox" /> Show only same-domain links by default</label>
-        <label>
-          Default crawl depth
-          <input id="maxDepth" type="number" min="1" max="5" />
-          <small>Link hops from the starting page. 1 = only the links on that page; 2 = also the links on those pages. You can change it per crawl on the dashboard.</small>
-        </label>
-        <label>
-          Name pages by
-          <select id="titleSource"></select>
-          <small>Used in the tree, the library and downloaded file names. Falls back to the others when a page lacks it. Applies to pages crawled after you change it.</small>
-        </label>
-        <label>
-          Load pages by
-          <select id="loadMode"></select>
-          <small>A fetch sends this browser's cookies for the site but doesn't run the page's JavaScript, so apps that build the page in JavaScript, or sign in with tokens (common with company single sign-on), come back empty. A browser tab opens the page in the background with your full session, waits for it to finish rendering, reads it and closes it.</small>
-        </label>
-        <label class="check"><input id="saveImageFiles" type="checkbox" /> Keep image files, not just image details</label>
-        <small class="indent">Image details (address, alt text, caption, size) are always saved. With this on, Save also stores each image file in the database, Download .md writes the images to a folder next to the .md file, and you can export them inside JSON.</small>
-        <label>
-          Skip images larger than (KB)
-          <input id="maxImageKB" type="number" min="16" max="51200" />
-        </label>
-        <div class="toolbar"><button type="submit" class="primary">Save</button><span id="status" class="muted"></span></div>
-      </form>
-    </main>
+    <p class="intro"><a href="dashboard.html#settings">Open Page Crawler settings</a></p>
     <script type="module" src="options.js"></script>
   </body>
 </html>

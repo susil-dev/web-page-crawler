@@ -18,6 +18,18 @@ export interface Settings {
   saveImageFiles: boolean;
   /** Images larger than this are skipped when storing files. */
   maxImageKB: number;
+  /** Follow "Next page" links, at the same depth, up to this many extra pages per list. */
+  followPagination: boolean;
+  maxNextPages: number;
+  /** Infinite scroll for pages read in a browser tab: scroll to the bottom up to this many times. */
+  scrollTimes: number;
+  /** While scrolling, press "Load more" / "Show more" buttons. */
+  clickLoadMore: boolean;
+  /** Export same-layout tables and lists (e.g. one per page of results) as one sheet. */
+  mergeSimilar: boolean;
+  /** Notion integration token (secret_… or ntn_…) and the page exports are created under. */
+  notionToken: string;
+  notionParent: string;
 }
 
 export const MODELS = [
@@ -51,6 +63,13 @@ export const DEFAULT_SETTINGS: Settings = {
   loadMode: "auto",
   saveImageFiles: false,
   maxImageKB: 2048,
+  followPagination: true,
+  maxNextPages: 5,
+  scrollTimes: 0,
+  clickLoadMore: false,
+  mergeSimilar: true,
+  notionToken: "",
+  notionParent: "",
 };
 
 export async function loadSettings(): Promise<Settings> {
@@ -61,3 +80,4 @@ export async function loadSettings(): Promise<Settings> {
 export async function saveSettings(settings: Settings): Promise<void> {
   await chrome.storage.local.set({ settings });
 }
+
